@@ -22,25 +22,22 @@ import cc.hyperium.event.InvokeEvent;
 import cc.hyperium.event.client.GameShutDownEvent;
 import cc.hyperium.handlers.handlers.keybinds.keybinds.*;
 import net.minecraft.client.Minecraft;
+import org.apache.commons.lang3.ArrayUtils;
 
 import java.util.HashMap;
 import java.util.Map;
-import net.minecraft.client.settings.KeyBinding;
-import org.apache.commons.lang3.ArrayUtils;
 
 public class HyperiumKeybindHandler {
 
-  private Map<String, HyperiumKeybind> keybinds = new HashMap<>();
-  private KeybindConfiguration config;
+  private final Map<String, HyperiumKeybind> keybinds = new HashMap<>();
+  private final KeybindConfiguration config;
 
   public HyperiumKeybindHandler() {
     // Register all the keybinds, regardless of the environment.
-    registerBinds(new ArmWaveKeybind(), new DabKeybind(), new FlipKeybind(),
-      new FlossKeybind(), new FriendsKeybind(), new GuiDanceKeybind(),
+    registerBinds(new FlipKeybind(), new FriendsKeybind(),
       new GuiKeybind(), new HideLeatherKeybind(), new NamesKeybind(),
       new RearCamKeybind(), new TogglePerspectiveKeybind(), new ToggleSprintKeybind(),
-      new TPoseKeybind(), new TwerkDanceKeybind(), new UploadScreenshotKeybind(),
-      new ViewStatsKeybind());
+      new UploadScreenshotKeybind(), new ViewStatsKeybind());
 
     // Register the debug key if this is a developer environment.
     if (Hyperium.INSTANCE.isDevEnv())
@@ -57,6 +54,8 @@ public class HyperiumKeybindHandler {
     // Register all the keybinds in GameSettings after the config has been loaded
     // so that the user can have their keycodes.
     registerKeybindings();
+
+    Minecraft.getMinecraft().gameSettings.loadOptions();
   }
 
   public void registerBinds(HyperiumKeybind... keyBinds) {
@@ -66,8 +65,12 @@ public class HyperiumKeybindHandler {
 
   public void registerKeybindings() {
     for (HyperiumKeybind bind : keybinds.values()) {
-      // Add the key to the `allKeys` map, so that it shows in GuiControl, and to the keyBindings list.
-      Minecraft.getMinecraft().gameSettings.keyBindings = ArrayUtils.add(Minecraft.getMinecraft().gameSettings.keyBindings, bind.toKeyBind());
+      // We should not register any keybinds more than just once
+      if (!bind.registered) {
+        // Add the key to the `allKeys` map, so that it shows in GuiControl, and to the keyBindings list.
+        Minecraft.getMinecraft().gameSettings.keyBindings = ArrayUtils.add(Minecraft.getMinecraft().gameSettings.keyBindings, bind.toKeyBind());
+        bind.registered = true;
+      }
     }
   }
 
@@ -82,6 +85,7 @@ public class HyperiumKeybindHandler {
     for (HyperiumKeybind keyBind : keybinds.values()) {
       // Check if the keybind is set to the current code.
       if (keyBind.getKeyCode() == keyCode) {
+        System.out.println(String.format("%d - %d - %s", keyCode, keyBind.getKeyCode(), keyBind.getDescription()));
         // If it's pressed, execute onPress
         if (pressed) {
           keyBind.onPress();
@@ -92,6 +96,12 @@ public class HyperiumKeybindHandler {
         }
         keyBind.setPressed(pressed);
       }
+    }
+  }
+
+  public void onHold() {
+    for (HyperiumKeybind keyBind : keybinds.values()) {
+      if (keyBind.isPressed()) keyBind.onHold();
     }
   }
 
